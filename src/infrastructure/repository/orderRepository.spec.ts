@@ -33,7 +33,7 @@ describe("Customer repository test unit", () => {
         await sequelize.close();
     });
 
-    it("should be create a orderItem",  async() => {
+    it("should create a orderItem",  async() => {
         const customerRepository = new CustomerRepository();
         const customer = new Customer("123", "Bruno");
         const address = new Address("1", 320, "22345000", "Sapucaia do Sul");
@@ -96,7 +96,7 @@ describe("Customer repository test unit", () => {
                     product_id: product2.id,
                 }
             ]
-        })
+        });
     });
 
     it("should update a orderItem",  async() => {
@@ -216,6 +216,48 @@ describe("Customer repository test unit", () => {
         });
     });
 
+    it("should find a order especific", async () => {
+        const customerRepository = new CustomerRepository();
+        const customer = new Customer("123", "Bruno");
+        const address = new Address("1", 320, "22345000", "Sapucaia do Sul");
+        customer.changeAddress(address);
+        await customerRepository.create(customer);
+
+        const productRepository = new ProductRepository();
+        const product = new Product("1", "SSD 120 GB", 250);
+        const product2 = new Product("2", "SSD 240", 489);
+        await productRepository.create(product);
+        await productRepository.create(product2);
+
+        const orderItem = new OrderItem("1", "O1", product.price, product.id, 2);
+        const orderItem2 = new OrderItem("2", "O2", product2.price, product2.id, 1);
+
+        const orderRepository = new OrderRepository();
+        const order = new Order("1", customer.id, [orderItem, orderItem2]);
+        await orderRepository.create(order);
+
+        const orderModel = await OrderModel.findOne({
+            where: {id: order.id},
+            include: ["items"]
+        });
+        const orderFounded = await orderRepository.find(order.id);
+
+        expect(orderModel.toJSON()).toStrictEqual({
+            id: (await orderFounded).id,
+            customer_id: (await orderFounded).customerId,
+            total: (await orderFounded).total(),
+            items: (await orderFounded).items.map((item) => ({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                product_id: item.productId,
+                quantity: item.quantity,
+                order_id:  orderFounded.id
+            }))
+        });
+
+
+    })
 
     it("should find all orders in database", async () => {
         const customerRepository = new CustomerRepository();
